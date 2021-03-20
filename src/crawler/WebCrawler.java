@@ -24,27 +24,24 @@ import javax.swing.JToggleButton;
 public class WebCrawler extends JFrame {
 
   // "ConcurrentHashSet" for all the fetched URLs
-  final static ConcurrentHashMap<String, Byte> FETCHED_LINKS = new ConcurrentHashMap<>();
+  static final ConcurrentHashMap<String, Byte> FETCHED_LINKS = new ConcurrentHashMap<>();
   // "DEPTH" + "\t" + "URL"
-  final static LinkedBlockingQueue<String> TASKS = new LinkedBlockingQueue<>();
+  static final LinkedBlockingQueue<String> TASKS = new LinkedBlockingQueue<>();
   // <URL, TITLE>
-  final static ConcurrentHashMap<String, String> LINKS = new ConcurrentHashMap<>();
-  private final static boolean DEBUG = false;
-  private final static Pattern PAGE_TITLE_PATTERN = Pattern.compile("<title>(.*)</title>");
-  private final static Pattern A_HREF_PATTERN = Pattern.compile(
-      "href\\s*=\\s*['\"](.*?)['\"].*>", Pattern.CASE_INSENSITIVE
-  );
-  private final static Pattern FULL_URL_PATTERN = Pattern.compile(
-      "https?://(?:www)?\\S*", Pattern.CASE_INSENSITIVE
-  );
-  private final static ThreadGroup WORKERS = new ThreadGroup("workers");
+  static final ConcurrentHashMap<String, String> LINKS = new ConcurrentHashMap<>();
+  private static final boolean DEBUG = false;
+  private static final Pattern PAGE_TITLE_PATTERN = Pattern.compile("<title>(.*)</title>");
+  private static final Pattern A_HREF_PATTERN =
+      Pattern.compile("href\\s*=\\s*['\"](.*?)['\"].*>", Pattern.CASE_INSENSITIVE);
+  private static final Pattern FULL_URL_PATTERN =
+      Pattern.compile("https?://(?:www)?\\S*", Pattern.CASE_INSENSITIVE);
+  private static final ThreadGroup WORKERS = new ThreadGroup("workers");
   static volatile int maxDepth;
   static volatile boolean fetching;
   private static int workersCount;
   private static Thread[] workers;
   private static long fetchingStartTime;
   private static String baseUrl;
-
 
   private final JLabel elapsedLabel;
   private final JLabel parsedLabel;
@@ -187,7 +184,7 @@ public class WebCrawler extends JFrame {
     exportButton.setName("ExportButton");
     exportButton.setBounds(450, 10, 100, 30);
     exportButton.addActionListener(e -> startExporting());
-    //exportButton.setEnabled(false);
+    // exportButton.setEnabled(false);
     exportPanel.add(exportButton);
 
     setVisible(true);
@@ -196,141 +193,12 @@ public class WebCrawler extends JFrame {
   ///////////////////////
   //  ENTRY METHODS
 
-  static void executeTask(String url, int depth) {
-    var fetchedHTML = fetchTextHtml(url);
-    var title = extractTitle(fetchedHTML);
-
-      if (!("".equals(fetchedHTML) || "".equals(title))) {
-          LINKS.put(url, title);
-      }
-
-    if (depth++ < maxDepth) {
-      for (var link : extractLinks(fetchedHTML, baseUrl)) {
-        if (!FETCHED_LINKS.containsKey(link)) {
-          FETCHED_LINKS.put(link, (byte) 0);
-          TASKS.offer(String.format("%d\t%s", depth, link));
-        }
-
-      }
-    }
-  }
-
-  private static void hireWorkers() {
-    for (int i = 0; i < workersCount; i++) {
-      if (workers[i] == null || workers[i].getState() == Thread.State.TERMINATED) {
-        workers[i] = new Thread(WORKERS, new Worker());
-        workers[i].start();
-      }
-    }
-  }
-
-  private static String fetchTextHtml(String url) {
-    try {
-      var conn = new URL(url).openConnection();
-      conn.setRequestProperty(
-          "User-Agent",
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:63.0) Gecko/20100101 Firefox/63.0"
-      );
-
-      // The crawler process only "text/html" content.
-      // Contents without content type are also rejected.
-        if (conn.getContentType() != null && !conn.getContentType().startsWith("text/html")) {
-            return "";
-        }
-
-      try (var inputStream = new BufferedInputStream(conn.getInputStream())) {
-        return new String(
-            inputStream.readAllBytes(),
-            StandardCharsets.UTF_8
-        );
-      }
-    } catch (MalformedURLException e) {
-        if (DEBUG) {
-            System.err.printf("Malformed URL (%s)!%n", url);
-        }
-    } catch (IllegalArgumentException e) {
-        if (DEBUG) {
-            System.err.printf("IllegalArgumentException! %s%n", url);
-        }
-    } catch (IOException e) {
-        if (DEBUG) {
-            System.err.printf("IOException! %s%n", e);
-        }
-    }
-    return "";
-  }
-
-  private static String extractTitle(String fetchedHTML) {
-    var matcher = PAGE_TITLE_PATTERN.matcher(fetchedHTML);
-    return matcher.find() ? matcher.group(1) : "";
-  }
-
-  private static ArrayList<String> extractLinks(String fetchedHTML, String baseUrl) {
-    var links = new ArrayList<String>();
-    var matcher = A_HREF_PATTERN.matcher(fetchedHTML);
-
-    while (matcher.find()) {
-      String url = completeUrl(baseUrl, matcher.group(1));
-        if (DEBUG) {
-            System.out.println(url);
-        }
-      links.add(url);
-    }
-
-    return links;
-  }
-
-  private static String completeUrl(String baseUrl, String urlFragment) {
-      if (urlFragment == null || baseUrl == null) {
-          return "";
-      }
-
-      if ("".equals(urlFragment) || "#".equals(urlFragment)) {
-          return baseUrl;
-      }
-
-    var matcher = FULL_URL_PATTERN.matcher(urlFragment);
-      if (matcher.matches()) {
-          return urlFragment;
-      }
-
-      if (urlFragment.startsWith("www.")) {
-          return "http://" + urlFragment;
-      }
-
-    if (urlFragment.startsWith("//")) {
-      return "http:" + urlFragment;
-    } else if (urlFragment.startsWith("/")) {
-      return baseUrl + urlFragment.substring(1);
-    } else if (validateUrl(baseUrl + urlFragment) == 200) {
-      return baseUrl + urlFragment;
-    } else {
-      return "http://" + urlFragment;
-    }
-  }
-
-  ///////////////////////
-  //  STATIC METHODS
-
-  private static int validateUrl(String url) {
-    try {
-      var conn = (HttpURLConnection) new URL(url).openConnection();
-      conn.disconnect();
-      return conn.getResponseCode();
-    } catch (IOException e) {
-      if (DEBUG)
-        System.err.printf("IOException! %s%n", e);
-    }
-
-    return -1;
-  }
-
   private void startFetching() {
     if (!fetching) {
       fetching = true;
       displayFetchingInfo();
       runButton.setText("Stop");
-      //exportButton.setEnabled(false);
+      // exportButton.setEnabled(false);
       this.repaint();
       FETCHED_LINKS.clear();
       TASKS.clear();
@@ -340,7 +208,7 @@ public class WebCrawler extends JFrame {
       if ("".equals(url)) {
         runButton.setSelected(false);
         runButton.setText("Run");
-        //exportButton.setEnabled(true);
+        // exportButton.setEnabled(true);
         displayFetchingInfo(true);
         this.setTitle("Web Crawler - Error: Base URL is insufficient");
         return;
@@ -365,15 +233,15 @@ public class WebCrawler extends JFrame {
         try {
           Thread.sleep(1_000);
         } catch (InterruptedException e) {
-            if (DEBUG) {
-                System.err.printf("InterruptedException! %s%n", e);
-            }
+          if (DEBUG) {
+            System.err.printf("InterruptedException! %s%n", e);
+          }
         }
 
         if (TASKS.size() > 0) {
-            if (hysteresis > 0) {
-                hysteresis--;
-            }
+          if (hysteresis > 0) {
+            hysteresis--;
+          }
         } else {
           hysteresis++;
         }
@@ -385,33 +253,33 @@ public class WebCrawler extends JFrame {
     fetching = false;
     runButton.setSelected(false);
     runButton.setText("Run");
-    //exportButton.setEnabled(true);
+    // exportButton.setEnabled(true);
     displayFetchingInfo(true);
   }
 
   private void startExporting() {
-    //runButton.setEnabled(false);
+    // runButton.setEnabled(false);
     var path = exportUrlTextField.getText();
     if (path == null || "".equals(path)) {
       this.setTitle("Web Crawler - Error: Export URL is insufficient");
-      //runButton.setEnabled(true);
+      // runButton.setEnabled(true);
       return;
     }
 
     try (var pw = new PrintWriter(new FileWriter(path))) {
-        for (var entry : LINKS.entrySet()) {
-            pw.printf("%s%n%s%n", entry.getKey(), entry.getValue());
-        }
+      for (var entry : LINKS.entrySet()) {
+        pw.printf("%s%n%s%n", entry.getKey(), entry.getValue());
+      }
       this.setTitle("Web Crawler - Exported successfully");
 
     } catch (IOException e) {
-        if (DEBUG) {
-            System.err.printf("IOException! %s%n", e);
-        }
+      if (DEBUG) {
+        System.err.printf("IOException! %s%n", e);
+      }
       this.setTitle("Web Crawler - Error: IOError during the export");
 
     } finally {
-      //runButton.setEnabled(true);
+      // runButton.setEnabled(true);
     }
   }
 
@@ -421,18 +289,37 @@ public class WebCrawler extends JFrame {
     return displayFetchingInfo(false);
   }
 
+  private String completeBaseUrl() {
+    var url = urlTextField.getText();
+
+    if (url == null || "".equals(url)) {
+      return "";
+    }
+
+    if (!(url.startsWith("http://") || url.startsWith("https://"))) {
+      url = "http://" + url;
+    }
+
+    if (!url.endsWith("/") && validateUrl(url) == validateUrl(url + "/")) {
+      url += "/";
+    }
+
+    urlTextField.setText(url);
+    return url;
+  }
+
   private long displayFetchingInfo(boolean fetchingIsOver) {
-      if (fetchingStartTime == 0L) {
-          fetchingStartTime = System.currentTimeMillis();
-      }
+    if (fetchingStartTime == 0L) {
+      fetchingStartTime = System.currentTimeMillis();
+    }
 
     long elapsedTime = (System.currentTimeMillis() - fetchingStartTime) / 1_000;
     String parsedCount = String.valueOf(LINKS.size());
 
     // reset start time for the next run
-      if (fetchingIsOver) {
-          fetchingStartTime = 0L;
-      }
+    if (fetchingIsOver) {
+      fetchingStartTime = 0L;
+    }
 
     var textToDisplay = new StringBuilder();
 
@@ -465,22 +352,126 @@ public class WebCrawler extends JFrame {
     return elapsedTime;
   }
 
-  private String completeBaseUrl() {
-    var url = urlTextField.getText();
+  static void executeTask(String url, int depth) {
+    var fetchedHTML = fetchTextHtml(url);
+    var title = extractTitle(fetchedHTML);
 
-      if (url == null || "".equals(url)) {
-          return "";
+    if (!("".equals(fetchedHTML) || "".equals(title))) {
+      LINKS.put(url, title);
+    }
+
+    if (depth++ < maxDepth) {
+      for (var link : extractLinks(fetchedHTML, baseUrl)) {
+        if (!FETCHED_LINKS.containsKey(link)) {
+          FETCHED_LINKS.put(link, (byte) 0);
+          TASKS.offer(String.format("%d\t%s", depth, link));
+        }
+      }
+    }
+  }
+
+  ///////////////////////
+  //  STATIC METHODS
+
+  private static void hireWorkers() {
+    for (int i = 0; i < workersCount; i++) {
+      if (workers[i] == null || workers[i].getState() == Thread.State.TERMINATED) {
+        workers[i] = new Thread(WORKERS, new Worker());
+        workers[i].start();
+      }
+    }
+  }
+
+  private static int validateUrl(String url) {
+    try {
+      var conn = (HttpURLConnection) new URL(url).openConnection();
+      conn.disconnect();
+      return conn.getResponseCode();
+    } catch (IOException e) {
+      if (DEBUG) System.err.printf("IOException! %s%n", e);
+    }
+
+    return -1;
+  }
+
+  private static String fetchTextHtml(String url) {
+    try {
+      var conn = new URL(url).openConnection();
+      conn.setRequestProperty(
+          "User-Agent",
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:63.0) Gecko/20100101 Firefox/63.0");
+
+      // The crawler process only "text/html" content.
+      // Contents without content type are also rejected.
+      if (conn.getContentType() != null && !conn.getContentType().startsWith("text/html")) {
+        return "";
       }
 
-    if (!(url.startsWith("http://") || url.startsWith("https://"))) {
-      url = "http://" + url;
+      try (var inputStream = new BufferedInputStream(conn.getInputStream())) {
+        return new String(inputStream.readAllBytes(), StandardCharsets.UTF_8);
+      }
+    } catch (MalformedURLException e) {
+      if (DEBUG) {
+        System.err.printf("Malformed URL (%s)!%n", url);
+      }
+    } catch (IllegalArgumentException e) {
+      if (DEBUG) {
+        System.err.printf("IllegalArgumentException! %s%n", url);
+      }
+    } catch (IOException e) {
+      if (DEBUG) {
+        System.err.printf("IOException! %s%n", e);
+      }
+    }
+    return "";
+  }
+
+  private static String extractTitle(String fetchedHTML) {
+    var matcher = PAGE_TITLE_PATTERN.matcher(fetchedHTML);
+    return matcher.find() ? matcher.group(1) : "";
+  }
+
+  private static ArrayList<String> extractLinks(String fetchedHTML, String baseUrl) {
+    var links = new ArrayList<String>();
+    var matcher = A_HREF_PATTERN.matcher(fetchedHTML);
+
+    while (matcher.find()) {
+      String url = completeUrl(baseUrl, matcher.group(1));
+      if (DEBUG) {
+        System.out.println(url);
+      }
+      links.add(url);
     }
 
-    if (!url.endsWith("/") && validateUrl(url) == validateUrl(url + "/")) {
-      url += "/";
+    return links;
+  }
+
+  private static String completeUrl(String baseUrl, String urlFragment) {
+    if (urlFragment == null || baseUrl == null) {
+      return "";
     }
 
-    urlTextField.setText(url);
-    return url;
+    if ("".equals(urlFragment) || "#".equals(urlFragment)) {
+      return baseUrl;
+    }
+
+    var matcher = FULL_URL_PATTERN.matcher(urlFragment);
+    if (matcher.matches()) {
+      return urlFragment;
+    }
+
+    if (urlFragment.startsWith("www.")) {
+      return "http://" + urlFragment;
+    }
+
+    if (urlFragment.startsWith("//")) {
+      return "http:" + urlFragment;
+    } else if (urlFragment.startsWith("/")) {
+      return baseUrl + urlFragment.substring(1);
+    } else if (validateUrl(baseUrl + urlFragment) == 200) {
+      return baseUrl + urlFragment;
+    } else {
+      return "http://" + urlFragment;
+    }
   }
 }

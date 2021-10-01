@@ -10,7 +10,7 @@
     <select />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="a7185fb8-c2a1-4516-8d06-af0e2ae8b685" name="Default Changelist" comment="Format according to Google Java Style Guide." />
+    <list default="true" id="a7185fb8-c2a1-4516-8d06-af0e2ae8b685" name="Default Changelist" comment="Reformat with google-java-format plugin." />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -52,7 +52,7 @@
   <component name="PropertiesComponent">
     <property name="RunOnceActivity.OpenProjectViewOnStart" value="true" />
     <property name="SHARE_PROJECT_CONFIGURATION_FILES" value="true" />
-    <property name="last_opened_file_path" value="$PROJECT_DIR$/../YeeLan" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$/../File_Type_Analyzer_-Hyperskill-" />
     <property name="project.structure.last.edited" value="Project" />
     <property name="project.structure.proportion" value="0.0" />
     <property name="project.structure.side.proportion" value="0.2" />
@@ -94,7 +94,21 @@
       <option name="project" value="LOCAL" />
       <updated>1615329833930</updated>
     </task>
-    <option name="localTasksCounter" value="2" />
+    <task id="LOCAL-00002" summary="Reformat with google-java-format plugin.">
+      <created>1616280342693</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1616280342693</updated>
+    </task>
+    <task id="LOCAL-00003" summary="Add missing xml">
+      <created>1616280461449</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1616280461449</updated>
+    </task>
+    <option name="localTasksCounter" value="4" />
     <servers />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
@@ -113,6 +127,8 @@
     <option name="ADD_EXTERNAL_FILES_SILENTLY" value="true" />
     <MESSAGE value="Initial commit." />
     <MESSAGE value="Format according to Google Java Style Guide." />
-    <option name="LAST_COMMIT_MESSAGE" value="Format according to Google Java Style Guide." />
+    <MESSAGE value="Reformat with google-java-format plugin." />
+    <MESSAGE value="Add missing xml" />
+    <option name="LAST_COMMIT_MESSAGE" value="Add missing xml" />
   </component>
 </project>
